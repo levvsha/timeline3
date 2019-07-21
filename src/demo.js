@@ -81,7 +81,7 @@ export default class Visualization {
             y: currentBottomY
           },
           {
-            x: document.location.search ?  width : xScale(parseTime(consortItem.life[1])),
+            x: xScale(parseTime(consortItem.life[1])),
             y: currentBottomY
           }
         ]
@@ -97,7 +97,7 @@ export default class Visualization {
             y: currentBottomY
           },
           {
-            x: document.location.search ?  width : xScale(parseTime(item.life[1])),
+            x: xScale(parseTime(item.life[1])),
             y: currentBottomY
           }
         ]
