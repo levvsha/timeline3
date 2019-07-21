@@ -1,5 +1,4 @@
 import * as d3 from 'd3';
-import _ from 'lodash';
 import WebFont from 'webfontloader';
 
 let fontIsActive = false;
@@ -19,7 +18,7 @@ const margins = {
   top: 20,
   right: 140,
   bottom: 30,
-  left: 110
+  left: 125
 };
 
 const parseTime  = d3.timeParse('%d.%m.%Y');
@@ -82,7 +81,7 @@ export default class Visualization {
             y: currentBottomY
           },
           {
-            x: document.location.search ?  width : xScale(parseTime(consortItem.marriage[0])) - config.mainWidth * 2,
+            x: document.location.search ?  width : xScale(parseTime(consortItem.life[1])),
             y: currentBottomY
           }
         ]
@@ -105,7 +104,7 @@ export default class Visualization {
       }
     );
 
-    const getCoordsForConsortLines = (consortItem, currentBottomY) => {
+    const getCoordsForConsortLines = (consortItem, currentBottomY, diff) => {
       const result = [
         {
           isConsort: true,
@@ -115,28 +114,44 @@ export default class Visualization {
               y: currentBottomY
             },
             {
-              x: xScale(parseTime(consortItem.marriage[0])) - config.mainWidth * 2,
+              x: xScale(parseTime(consortItem.marriage[0])),
               y: currentBottomY
             },
             {
-              x: xScale(parseTime(consortItem.marriage[0])) - config.mainWidth / 2 - 3,
-              y: currentBottomY + config.spacing / 2
+              x: xScale(parseTime(consortItem.marriage[0])),
+              y: currentBottomY + config.spacing * diff
             }
           ]
         },
       ];
 
-      if (consortItem.life[1] > consortItem.marriage[1]) {
+      result.push(
+        {
+          isConsort: true,
+          coords: [
+            {
+              x: xScale(parseTime(consortItem.marriage[0])) - config.consortWidth / 2,
+              y: currentBottomY + config.spacing * diff
+            },
+            {
+              x: xScale(parseTime(consortItem.marriage[1])),
+              y: currentBottomY + config.spacing * diff
+            }
+          ]
+        },
+      );
+
+      if (parseTime(consortItem.life[1]) > parseTime(consortItem.marriage[1])) {
         result.push(
           {
             isConsort: true,
             coords: [
               {
-                x: xScale(parseTime(consortItem.marriage[1])) - 2,
-                y: currentBottomY + config.spacing / 2 + 2
+                x: xScale(parseTime(consortItem.marriage[1])) - config.consortWidth / 2,
+                y: currentBottomY + config.spacing
               },
               {
-                x: xScale(parseTime(consortItem.marriage[1])) + config.mainWidth * 2,
+                x: xScale(parseTime(consortItem.marriage[1])) - config.consortWidth / 2,
                 y: currentBottomY
               },
               {
@@ -148,7 +163,7 @@ export default class Visualization {
         );
       }
 
-      return result
+      return result;
     };
 
     const getCoordsForPrinceLines = (item, currentBottomY) => (
@@ -167,57 +182,21 @@ export default class Visualization {
       }
     );
 
-    const getCoordsForEmperorLines = (item, currentBottomY) => {
-      const result = {
+    const getCoordsForEmperorLines = (item, currentBottomY) => (
+      {
         isEmperor: true,
         coords: [
           {
             x: xScale(parseTime(item.life[0])),
-            y: currentBottomY + config.mainWidth / 2
+            y: currentBottomY
           },
           {
-            x: xScale(parseTime(item.life[0])),
-            y: currentBottomY - config.mainWidth / 2
-          },
+            x: xScale(parseTime(item.life[1])),
+            y: currentBottomY
+          }
         ]
-      };
-
-      if (item.consort) {
-        item.consort.forEach(consortItem => {
-          result.coords = result.coords.concat([
-            {
-              x: xScale(parseTime(consortItem.marriage[0])) - config.mainWidth,
-              y: currentBottomY - config.mainWidth / 2
-            },
-            {
-              x: xScale(parseTime(consortItem.marriage[0])),
-              y: currentBottomY - config.mainWidth * 1.5
-            },
-            {
-              x: xScale(parseTime(consortItem.marriage[1])),
-              y: currentBottomY - config.mainWidth * 1.5
-            },
-            {
-              x: xScale(parseTime(consortItem.marriage[1])),
-              y: currentBottomY + config.mainWidth / 2
-            }
-          ]);
-        });
-      } else {
-        result.coords = result.coords.concat([
-          {
-            x: xScale(parseTime(item.life[1])),
-            y: currentBottomY - config.mainWidth / 2
-          },
-          {
-            x: xScale(parseTime(item.life[1])),
-            y: currentBottomY + config.mainWidth / 2
-          },
-        ]);
       }
-
-      return result;
-    };
+    );
 
     const getLabelsCoords = (item, currentBottomY) => (
       {
@@ -232,7 +211,7 @@ export default class Visualization {
 
     let currentBottomY = 0;
 
-    const gridLines = [];
+    let gridLines = [];
     let mainLines = [];
     const relationshipLabels = [];
     const nameLabels = [];
@@ -240,6 +219,7 @@ export default class Visualization {
     const levels = [];
     const gradients = [];
     const ruleTime = [];
+    const ruleTimeConsorts = [];
 
     data.level = 0;
     let store = [data];
@@ -248,19 +228,55 @@ export default class Visualization {
       const item = store.shift();
 
       if (item.consort) {
-        item.consort.forEach(consortItem => {
+        item.consort.forEach((consortItem, index) => {
           gridLines.push(getCoordsForConsortGridLines(consortItem, currentBottomY));
-          mainLines = mainLines.concat(getCoordsForConsortLines(consortItem, currentBottomY));
+          mainLines = mainLines.concat(getCoordsForConsortLines(consortItem, currentBottomY, item.consort.length - index));
           nameLabels.push(getLabelsCoords(consortItem, currentBottomY));
 
           levels.push({
+            index: index + 1,
             isConsort: true,
             consortName: item.name,
             yCoord: currentBottomY,
-            level: item.level
+            level: item.level,
+            name: consortItem.name
           });
 
           currentBottomY += config.spacing;
+
+          if (index === item.consort.length - 1) {
+            gridLines.push(getCoordsForConsortGridLines(consortItem, currentBottomY));
+
+            levels.push({
+              index: index + 1,
+              isConsort: true,
+              consortName: item.name,
+              isWife: true,
+              yCoord: currentBottomY,
+              level: item.level
+            });
+
+            if (item.rule) {
+              item.consort.forEach((d, index) => {
+                let diff = 0;
+
+                if (parseTime(d.marriage[0]) > parseTime(item.rule[0])) {
+                  diff = config.consortWidth / 2;
+                }
+
+                const x = Math.max(xScale(parseTime(d.marriage[0])), xScale(parseTime(item.rule[0]))) - diff;
+
+                ruleTimeConsorts.push({
+                  x,
+                  y: currentBottomY - config.consortWidth / 2,
+                  width: xScale(parseTime(d.marriage[1])) - x ,
+                  height: config.consortWidth
+                });
+              });
+            }
+
+            currentBottomY += config.spacing;
+          }
         });
       }
 
@@ -271,9 +287,9 @@ export default class Visualization {
 
         ruleTime.push({
           x: xScale(parseTime(item.rule[0])),
-          y: item.consort ? currentBottomY - config.mainWidth * 1.5 : currentBottomY - config.mainWidth / 2,
+          y: currentBottomY - config.mainWidth / 2,
           width: xScale(parseTime(item.rule[1])) - xScale(parseTime(item.rule[0])),
-          height: item.consort ? config.mainWidth * 2 : config.mainWidth
+          height: config.mainWidth
         });
 
         emperorsMap[item.name] = {
@@ -282,7 +298,9 @@ export default class Visualization {
           level: item.level,
           name: item.name,
           dad: item.dad,
-          grandpa: item.grandpa
+          grandpa: item.grandpa,
+          moreThanOneConsort: item.moreThanOneConsort,
+          mother: item.mother
         };
       } else {
         mainLines.push(getCoordsForPrinceLines(item, currentBottomY));
@@ -299,7 +317,7 @@ export default class Visualization {
         level: item.level,
         dad: item.dad,
         grandpa: item.grandpa,
-        index: item.index
+        index: item.index,
       });
 
       nameLabels.push(getLabelsCoords(item, currentBottomY));
@@ -310,7 +328,8 @@ export default class Visualization {
           level: item.level + 1,
           dad: item.name,
           grandpa: item.dad,
-          index: index + 1
+          moreThanOneConsort: item.consort && item.consort.length > 1,
+          index: index + 1,
         }, childItem)).concat(store);
       }
     }
@@ -320,15 +339,19 @@ export default class Visualization {
       const diff = emperorLevel - currentLevel.level;
 
       const result = {
-        '-2': currentLevel.grandpa === emperor.name ? 'внук' : 'внучатый племянник',
+        '-2': currentLevel.grandpa === emperor.name ? `внук ${ currentLevel.index }` : 'внучатый племянник',
         '-1': currentLevel.isConsort
           ? 'невестка'
-          : currentLevel.dad === emperor.name ? 'сын' : 'племянник',
+          : currentLevel.dad === emperor.name ? `сын ${ currentLevel.index }` : 'племянник',
         '0': currentLevel.isConsort
-          ? currentLevel.consortName === emperor.name ? 'жена' : 'невестка'
-          : 'брат',
+          ? currentLevel.consortName === emperor.name ? `женщина ${ currentLevel.index }` : 'невестка'
+          : `брат ${ currentLevel.index }`,
         '1': currentLevel.isConsort
-          ? emperor.dad === currentLevel.consortName ? 'мать' : 'тётя'
+          ? emperor.dad === currentLevel.consortName
+            ? emperor.moreThanOneConsort
+              ? emperor.mother === currentLevel.name ? 'мать' : null
+              : 'мать'
+            : 'тётя'
           : currentLevel.name === emperor.dad ? 'отец' : 'дядя',
         '2': currentLevel.isConsort
           ? currentLevel.consortName === emperor.grandpa ? 'бабка' : 'двоюродная бабка'
@@ -341,7 +364,13 @@ export default class Visualization {
     Object.keys(emperorsMap).forEach((emperorName) => {
       levels.forEach(level => {
         if (emperorName !== level.name) {
-          const text = getRelationshipText(emperorsMap[emperorName], level);
+          let text = null;
+
+          if (level.isWife) {
+            text = level.consortName === emperorName ? 'супруга' : null;
+          } else {
+            text = getRelationshipText(emperorsMap[emperorName], level);
+          }
 
           if (
             emperorsMap[emperorName].ruleXCoord
@@ -349,25 +378,13 @@ export default class Visualization {
             && emperorsMap[emperorName].ruleXCoord > level.life[0]
             && emperorsMap[emperorName].ruleXCoord < level.life[1] - 1
           ) {
-            let y = level.yCoord - config.mainWidth / 2;
-            let height = config.mainWidth;
-
-            if (level.marriage && _.some(
-              level.marriage,
-              marriageItem => _.inRange(emperorsMap[emperorName].ruleXCoord, marriageItem[0], marriageItem[1])
-            )) {
-              y = level.yCoord - config.mainWidth * 1.5;
-              height = config.mainWidth * 2;
-            }
-
             gradients.push({
               x: emperorsMap[emperorName].ruleXCoord,
-              y,
+              y: level.yCoord - config.mainWidth / 2,
               width: 20,
-              height,
+              height: config.mainWidth,
               className: emperorsMap[level.name] ? 'filled-emperor' : 'filled'
             });
-
           }
 
           relationshipLabels.push({
@@ -438,7 +455,8 @@ export default class Visualization {
     const labelsNode = root.append('g');
     const relationshipLabelsNode = root.append('g');
     const gradientsNode = root.append('g');
-    const ruleTimeNode = root.append('g')
+    const ruleTimeNode = root.append('g');
+    const ruleTimeConsortNode = root.append('g');
 
     gradientsNode
       .selectAll('rect')
@@ -472,24 +490,28 @@ export default class Visualization {
       .attr('width', item => item.width)
       .attr('height', item => item.height);
 
+    ruleTimeConsortNode
+      .selectAll('rect')
+      .data(ruleTimeConsorts)
+      .enter()
+      .append('rect')
+      .style('fill', '#51709d')
+      .attr('x', item => item.x)
+      .attr('y', item => item.y)
+      .attr('width', item => item.width)
+      .attr('height', item => item.height);
+
     mainLinesNode
       .selectAll('path')
-      .data(mainLines.filter(item => !item.isEmperor))
+      .data(mainLines)
       .enter()
       .append('path')
       .attr('class', 'main-line')
       .classed('is-prince', item => item.isPrince)
       .classed('is-consort', item => item.isConsort)
+      .classed('is-emperor', item => item.isEmperor)
       .datum(item => item.coords)
       .attr('d', data => line(data));
-
-    mainLinesNode
-      .selectAll('polygon')
-      .data(mainLines.filter(item => item.isEmperor))
-      .enter()
-      .append('polygon')
-      .datum(item => item.coords)
-      .attr('points', data => data.map(d => [d.x, d.y].join(',')));
 
     const labelsTextGroups = labelsNode
       .selectAll('g')
