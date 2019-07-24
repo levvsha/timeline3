@@ -116,6 +116,15 @@ export default class Visualization {
             {
               x: xScale(parseTime(consortItem.marriage[0])),
               y: currentBottomY
+            }
+          ]
+        },
+        {
+          thinLine: true,
+          coords: [
+            {
+              x: xScale(parseTime(consortItem.marriage[0])),
+              y: currentBottomY - config.consortWidth / 2
             },
             {
               x: xScale(parseTime(consortItem.marriage[0])),
@@ -130,7 +139,7 @@ export default class Visualization {
           isConsort: true,
           coords: [
             {
-              x: xScale(parseTime(consortItem.marriage[0])) - config.consortWidth / 2,
+              x: xScale(parseTime(consortItem.marriage[0])),
               y: currentBottomY + config.spacing * diff
             },
             {
@@ -144,14 +153,23 @@ export default class Visualization {
       if (parseTime(consortItem.life[1]) > parseTime(consortItem.marriage[1])) {
         result.push(
           {
-            isConsort: true,
+            thinLine: true,
             coords: [
               {
-                x: xScale(parseTime(consortItem.marriage[1])) - config.consortWidth / 2,
+                x: xScale(parseTime(consortItem.marriage[1])),
                 y: currentBottomY + config.spacing
               },
               {
-                x: xScale(parseTime(consortItem.marriage[1])) - config.consortWidth / 2,
+                x: xScale(parseTime(consortItem.marriage[1])),
+                y: currentBottomY - config.consortWidth / 2
+              }
+            ]
+          },
+          {
+            isConsort: true,
+            coords: [
+              {
+                x: xScale(parseTime(consortItem.marriage[1])),
                 y: currentBottomY
               },
               {
@@ -257,14 +275,8 @@ export default class Visualization {
             });
 
             if (item.rule) {
-              item.consort.forEach((d, index) => {
-                let diff = 0;
-
-                if (parseTime(d.marriage[0]) > parseTime(item.rule[0])) {
-                  diff = config.consortWidth / 2;
-                }
-
-                const x = Math.max(xScale(parseTime(d.marriage[0])), xScale(parseTime(item.rule[0]))) - diff;
+              item.consort.forEach((d) => {
+                const x = Math.max(xScale(parseTime(d.marriage[0])), xScale(parseTime(item.rule[0])));
 
                 ruleTimeConsorts.push({
                   x,
@@ -507,6 +519,7 @@ export default class Visualization {
       .enter()
       .append('path')
       .attr('class', 'main-line')
+      .classed('is-thin', item => item.thinLine)
       .classed('is-prince', item => item.isPrince)
       .classed('is-consort', item => item.isConsort)
       .classed('is-emperor', item => item.isEmperor)
